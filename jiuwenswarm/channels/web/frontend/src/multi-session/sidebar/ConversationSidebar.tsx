@@ -27,6 +27,7 @@ import {
 } from './sidebarModel';
 import { ProjectCreateMenu } from './ProjectCreateMenu';
 import { projectCreateErrorKey } from './projectCreateErrors';
+import { projectRegistryClient } from '../../features/workspace/projectRegistryClient';
 import {
   isLikelyAbsolutePath,
   isProjectDirectoryPickerSupported,
@@ -65,6 +66,8 @@ export type NewConversationOptions = {
    * 见 App.tsx enterNewConversation。 */
   initialEnabledPlugins?: string[];
   initialEnabledMcps?: string[];
+  /** 专家团「通过聊天创建」入口使用 4.9 高保真欢迎态。 */
+  welcomeVariant?: 'group-create';
   /**
    * 强制新会话进入指定模式，覆盖"继承当前活动会话模式"的默认行为，也覆盖未发送的临时新会话
    * 草稿里残留的模式。用于扩展页"使用插件/使用 MCP/试试这样用"这类入口——插件/MCP 不支持
@@ -156,6 +159,8 @@ const menuIconByAction: Record<SidebarMenuAction, React.ComponentType<React.SVGP
   pin: PinIcon,
   rename: EditIcon,
   delete: DeleteIcon,
+  'archive-sessions': FolderIcon,
+  'delete-archived-sessions': DeleteIcon,
 };
 
 function getMenuIcon(item: SidebarMenuItem): React.ComponentType<React.SVGProps<SVGSVGElement>> {
@@ -346,12 +351,13 @@ function ProjectEntityRow({
   isExpanded,
   isPinned,
   hasUnreadCronResult = false,
-  hideActions = false,
+  defaultProject = false,
   onToggle,
   onNew,
   onPin,
   onRename,
   onRemove,
+  onBatch,
   newLabel,
   projectId,
 }: {
@@ -360,12 +366,13 @@ function ProjectEntityRow({
   isExpanded: boolean;
   isPinned?: boolean;
   hasUnreadCronResult?: boolean;
-  hideActions?: boolean;
+  defaultProject?: boolean;
   onToggle: () => void;
   onNew: () => void;
   onPin: () => void;
   onRename: () => void;
   onRemove: () => void;
+  onBatch: (action: 'archive' | 'delete_archived') => void;
   newLabel?: string;
   projectId?: string;
 }) {
@@ -466,7 +473,7 @@ function ProjectEntityRow({
       >
         <PlusIcon aria-hidden />
       </button>
-      {hideActions ? null : (
+      {(
         <button
           type="button"
           className="conversation-list-item__actions"
@@ -483,9 +490,9 @@ function ProjectEntityRow({
           <MoreIcon aria-hidden />
         </button>
       )}
-      {!hideActions && menuOpen ? (
+      {menuOpen ? (
         <SidebarMenu
-          items={getProjectMenuItems(Boolean(isPinned), t)}
+          items={getProjectMenuItems(Boolean(isPinned), t, defaultProject)}
           onAction={(action) => {
             setMenuOpen(false);
             switch (action) {
@@ -497,6 +504,12 @@ function ProjectEntityRow({
                 break;
               case 'delete':
                 onRemove();
+                break;
+              case 'archive-sessions':
+                onBatch('archive');
+                break;
+              case 'delete-archived-sessions':
+                onBatch('delete_archived');
                 break;
             }
           }}
@@ -738,12 +751,14 @@ function ProjectCreateDialog({
 
 function ProjectDeleteDialog({
   project,
+  action,
   error,
   deleting,
   onCancel,
   onDelete,
 }: {
   project: ProjectInfo;
+  action: 'delete' | 'archive' | 'delete_archived';
   error?: string | null;
   deleting: boolean;
   onCancel: () => void;
@@ -753,8 +768,9 @@ function ProjectDeleteDialog({
   return (
     <DeleteDialog
       title={project.name}
-      dialogTitle={t('multiSession.project.deleteProject')}
-      descriptionKey="multiSession.project.deleteProjectDescription"
+      dialogTitle={t(`multiSession.project.${action === 'delete' ? 'deleteProject' : action === 'archive' ? 'archiveSessions' : 'deleteArchivedSessions'}`)}
+      confirmLabel={t(action === 'archive' ? 'multiSession.project.confirm' : 'common.delete')}
+      descriptionKey={`multiSession.project.${action === 'delete' ? 'deleteProjectDescription' : action === 'archive' ? 'archiveSessionsDescription' : 'deleteArchivedSessionsDescription'}`}
       descriptionValues={{ projectName: project.name }}
       deleting={deleting}
       error={error ?? null}
@@ -791,6 +807,7 @@ export function ConversationSidebar({
   const [renameError, setRenameError] = useState<string | null>(null);
   const [pinError, setPinError] = useState<string | null>(null);
   const [deleteProjectTarget, setDeleteProjectTarget] = useState<ProjectInfo | null>(null);
+  const [projectAction, setProjectAction] = useState<'delete' | 'archive' | 'delete_archived'>('delete');
   const [deleteProjectBusy, setDeleteProjectBusy] = useState(false);
   const [deleteProjectError, setDeleteProjectError] = useState<string | null>(null);
   const [projectAddMenuOpen, setProjectAddMenuOpen] = useState(false);
@@ -1080,11 +1097,27 @@ export function ConversationSidebar({
   }
 
   async function handleRemoveProject() {
-    if (!deleteProjectTarget || isDefaultProject(deleteProjectTarget)) return;
+    if (!deleteProjectTarget || (projectAction === 'delete' && isDefaultProject(deleteProjectTarget))) return;
     setDeleteProjectBusy(true);
     setDeleteProjectError(null);
     try {
-      await removeProject(deleteProjectTarget.project_id);
+      const projectId = deleteProjectTarget.project_id;
+      if (projectAction === 'delete') {
+        await removeProject(projectId);
+        await loadCronJobs();
+      } else {
+        const result = await (projectAction === 'archive'
+          ? projectRegistryClient.archiveSessions(projectId)
+          : projectRegistryClient.deleteArchivedSessions(projectId));
+        const workspace = useWorkspaceStore.getState();
+        workspace.removeSessions(result.results.filter((item) => item.ok).map((item) => item.session_id));
+        await Promise.all([workspace.loadProjects(), workspace.loadProjectSessions(projectId), workspace.loadPinnedSessions()]);
+        if (result.failed_count) {
+          setDeleteProjectError(t('multiSession.project.batchPartialFailure', { succeeded: result.succeeded_count, failed: result.failed_count })
+            + ' ' + result.results.filter((item) => !item.ok).map((item) => `${item.session_id}: ${item.error || item.code}`).join('; '));
+          return;
+        }
+      }
       setDeleteProjectTarget(null);
     } catch (error) {
       setDeleteProjectError(error instanceof Error ? error.message : String(error));
@@ -1237,7 +1270,7 @@ export function ConversationSidebar({
           isExpanded={expanded}
           isPinned={project.pinned}
           hasUnreadCronResult={hasUnreadCronResult}
-          hideActions={isDefaultProject(project)}
+          defaultProject={isDefaultProject(project)}
           newLabel={getProjectNewLabel(project.name, t)}
           projectId={project.project_id}
           onToggle={() => toggleProjectExpanded(project.project_id)}
@@ -1256,6 +1289,12 @@ export function ConversationSidebar({
           }}
           onRemove={() => {
             if (isDefaultProject(project)) return;
+            setProjectAction('delete');
+            setDeleteProjectError(null);
+            setDeleteProjectTarget(project);
+          }}
+          onBatch={(action) => {
+            setProjectAction(action);
             setDeleteProjectError(null);
             setDeleteProjectTarget(project);
           }}
@@ -1490,9 +1529,11 @@ export function ConversationSidebar({
       {deleteProjectTarget ? (
         <ProjectDeleteDialog
           project={deleteProjectTarget}
+          action={projectAction}
           deleting={deleteProjectBusy}
           error={deleteProjectError}
           onCancel={() => {
+            if (deleteProjectBusy) return;
             setDeleteProjectError(null);
             setDeleteProjectTarget(null);
           }}

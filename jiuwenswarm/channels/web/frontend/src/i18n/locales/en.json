@@ -145,9 +145,9 @@
       "modelIdHint": "For example: glm-4.7. Model IDs vary by provider; refer to its model list or official documentation.",
       "fetchLatestModels": "Fetch latest",
       "presetModels": "Showing provider presets. Open the list to fetch the latest models",
-      "noPresetModels": "No preset models. Open the list or refresh to fetch the latest models",
-      "noPresetModelsApiKeyRequired": "No preset models. Enter an API key before fetching the latest models",
-      "noPresetModelsNoEndpoint": "This provider has no preset models or model-list endpoint",
+      "noPresetModels": "Open the list or refresh to fetch the latest models",
+      "noPresetModelsApiKeyRequired": "Enter an API key before fetching the model list",
+      "noPresetModelsNoEndpoint": "This provider does not expose a model-list endpoint",
       "fetchModelsLoading": "Fetching...",
       "fetchModelsRemote": "Fetched {{count}} models from the provider",
       "fetchModelsFailed": "Failed to fetch the model list",
@@ -155,11 +155,11 @@
       "fetchModelsInvalidResponse": "The provider model-list response is invalid",
       "fetchModelsUnrecognizedResult": "The provider returned an unrecognized model-list source or reason",
       "fetchReasons": {
-        "noEndpoint": "Using the provider preset list: this provider does not expose a model-list endpoint",
-        "apiKeyRequired": "Using the provider preset list: enter an API key to fetch the latest models",
-        "remoteFailed": "Using the provider preset list: the remote request failed or returned no models",
-        "remoteAuthFailed": "Using the provider preset list: invalid API key or auth mismatch (HTTP 401/403)",
-        "remoteRateLimited": "Using the provider preset list: rate limited (HTTP 429), retry later"
+        "noEndpoint": "This provider does not expose a model-list endpoint",
+        "apiKeyRequired": "Enter an API key to fetch the latest models",
+        "remoteFailed": "The remote request failed or returned no models",
+        "remoteAuthFailed": "Invalid API key or auth mismatch (HTTP 401/403)",
+        "remoteRateLimited": "Rate limited (HTTP 429), retry later"
       },
       "vendorGroups": {
         "token_plan": "Token Plan",
@@ -676,6 +676,16 @@
     "welcomeLogoAlt": "WorkSwarm logo",
     "welcomeBubbleText": "Hi~ I'm your personal desktop smart buddy.",
     "welcomeHeading": "Hi, I'm WorkSwarm. Nice to meet you!",
+    "groupCreateWelcomeBrand": "JiuwenSwarm",
+    "groupCreateWelcomeSuffix": "makes every work problem easier!",
+    "groupCreateBannerAlt": "JiuwenSwarm Expert Team creation",
+    "groupCreateCapabilities": {
+      "web": "Web",
+      "document": "Documents",
+      "slides": "Slides",
+      "spreadsheet": "Spreadsheets",
+      "imageGeneration": "Image generation"
+    },
     "welcomeSuggestions": {
       "journey": "Let's begin a brand-new journey!",
       "skills": "Can you tell me what skills you have?"
@@ -754,6 +764,7 @@
     "skillsAdd": "Add to composer",
     "skillsRemove": "Remove",
     "agent": "Experts",
+    "agentGroup": "Expert Teams",
     "agentToggle": "Choose an installed Expert",
     "agentSearchPlaceholder": "Enter keywords to search",
     "agentNoInstalled": "No installed Experts",
@@ -761,6 +772,15 @@
     "agentAdd": "Add to composer",
     "agentRemove": "Remove Expert",
     "agentMore": "More",
+    "agentGroupSearchPlaceholder": "Search by keyword",
+    "agentGroupNoInstalled": "No installed Expert Teams",
+    "agentGroupNoMatches": "No matching Expert Teams found",
+    "agentGroupRemove": "Remove Expert Team",
+    "agentGroupSkillsLocked": "An Expert Team is selected; additional Expert Team skills are unavailable",
+    "agentGroupBinding": "This conversation is bound to an Expert Team and cannot be changed",
+    "agentGroupFirstBuildOnly": "Expert Teams can only be selected when a Team is first created",
+    "agentOnlyInSingleAgentMode": "Experts can only be selected in single-Agent mode",
+    "agentGroupOnlyInTeamMode": "Expert Teams can only be selected in Team mode",
     "extension": "Extensions",
     "extensionSearchPlaceholder": "Search by keyword",
     "extensionEmpty": "No results",
@@ -908,6 +928,9 @@
   },
   "persistSession": {
     "textRequired": "Enter a task after /persist"
+  },
+  "crossSession": {
+    "messageBadge": "From session: {{title}}"
   },
   "goal": {
     "formSubmit": "Confirm",
@@ -2519,7 +2542,7 @@
     "title": "Expert Management",
     "subtitle": "Create and manage reusable Expert assets",
     "tabsLabel": "Expert management categories",
-    "tabs": { "catalog": "Expert marketplace", "mine": "My Experts" },
+    "tabs": { "catalog": "Expert marketplace", "teams": "Expert Team marketplace", "mine": "My Experts", "mineAgent": "Experts", "mineGroup": "Expert Teams", "mineLabel": "My asset type" },
     "source": { "builtin": "Official", "local": "Mine", "hub": "Hub" },
     "categoryLabel": "Expert categories",
     "categoryAll": "All",
@@ -2529,7 +2552,9 @@
     "mineSubtitle": "Manage Experts you created or installed",
     "searchLabel": "Search Experts",
     "searchCatalog": "Search Experts",
+    "searchTeams": "Search Expert Teams",
     "searchMine": "Search my Experts",
+    "searchMineGroup": "Search my Expert Teams",
     "unknownDescription": "No capability description",
     "categories": {
       "IndustryConsultant": "Industry",
@@ -2570,6 +2595,7 @@
       "installed": "Installed",
       "loadError": "Unable to load the Expert list. Try again.",
       "detailError": "Unable to load Expert details. Try again.",
+      "hubAssetChanged": "This expert has changed or been removed on Hub. The catalog is refreshing; go back and select it again.",
       "actionError": "The action could not be completed. Try again in a moment.",
       "duplicateName": "An Expert with this name already exists. Choose a different name and try again.",
       "agentUnavailable": "This Expert is no longer available. Refresh the list and try again.",
@@ -2588,7 +2614,7 @@
       "uploadMissingReadme": "The Expert package is missing README.md.",
       "uploadMissingPersona": "The Expert package is missing the persona directory, or it contains no .md files.",
       "newVersion": "This Expert has a new version available",
-      "teamUnavailable": "Team Expert management is not available yet",
+      "teamUnavailable": "Expert Team management is not available yet",
       "featureUnavailable": "This feature is outside this milestone",
       "catalogEmpty": "No Experts to show",
       "mineEmpty": "You do not have any Experts yet",
@@ -2714,6 +2740,92 @@
         "descriptionRequired": "Enter a capability description",
         "personaRequired": "Enter a persona"
       }
+    },
+    "group": {
+      "actions": {
+        "createFirst": "Create manually",
+        "createByChat": "Create via chat",
+        "createByUpload": "Create from file",
+        "createViaChatPrompt": "Help me create an XXX Expert Team, skilled at XXXXX. My experience is: [please add your industry background and relevant experience]",
+        "install": "Install",
+        "installing": "Installing…",
+        "use": "Use",
+        "uninstall": "Uninstall",
+        "uninstalling": "Uninstalling…",
+        "delete": "Delete",
+        "saving": "Saving…"
+      },
+      "card": { "open": "Open {{name}} details", "actions": "Actions for {{name}}" },
+      "states": {
+        "loadError": "Unable to load the Expert Team list. Try again.",
+        "detailError": "Unable to load Expert Team details. Try again.",
+        "actionError": "The Expert Team action could not be completed. Try again.",
+        "duplicateName": "An Expert Team with this name already exists. Choose a different name and try again.",
+        "unavailable": "This Expert Team package is no longer available.",
+        "definitionUnavailable": "This Expert Team definition is incomplete and cannot be used.",
+        "membersInvalid": "The Expert Team members are invalid. Choose a leader and distinct members.",
+        "memberUnavailable": "A selected Expert is unavailable or not Team-compatible.",
+        "createSuccess": "Expert Team package {{id}} was created.",
+        "uploadSuccess": "Expert Team package {{id}} was imported. Review it in My Expert Teams.",
+        "uploadError": "Unable to import the Expert Team package. Check the file and try again.",
+        "catalogEmpty": "No Expert Teams to show",
+        "mineEmpty": "You do not have any Expert Teams yet",
+        "noMatch": "No matching Expert Teams found"
+      },
+      "detail": {
+        "membersTitle": "Expert Team members",
+        "leader": "Leader",
+        "tabsLabel": "Expert Team detail content",
+        "contentTab": "Details",
+        "filesTab": "File preview",
+        "noDetails": "No additional details",
+        "filesUnavailable": "Install the Expert Team to view its files."
+      },
+      "files": { "loadError": "Unable to load Expert Team files. Try again.", "readError": "Unable to read the Expert Team file. Try again." },
+      "form": {
+        "title": "Create manually",
+        "createAgentTab": "Create Expert",
+        "createGroupTab": "Create Expert Team",
+        "basic": "Basic information",
+        "nameLabel": "Expert Team name",
+        "namePlaceholder": "Enter a display name",
+        "descriptionLabel": "Capability description",
+        "descriptionPlaceholder": "Describe what this Expert Team can do",
+        "tagLabel": "Domain tags (optional)",
+        "tagPlaceholder": "Choose domain tags",
+        "teamIntro": "Expert Team introduction",
+        "teamConfig": "Expert Team configuration",
+        "personaLabel": "Expert Team introduction",
+        "personaPlaceholder": "Describe the Expert Team",
+        "leaderFieldLabel": "Leader",
+        "leaderLabel": "Choose leader",
+        "changeLeader": "Change leader",
+        "membersFieldLabel": "Members",
+        "addMember": "Add member",
+        "removeMember": "Remove member {{name}}",
+        "skillsLabel": "Expert Team skill configuration (optional)",
+        "chooseSkills": "Choose skills",
+        "removeSkill": "Remove skill {{name}}",
+        "skillsError": "Unable to load the skill list. Try again.",
+        "skillsEmpty": "No skills available",
+        "promptsLabel": "Try asking me (optional)",
+        "promptPlaceholder": "Enter a suggested question",
+        "removePrompt": "Remove suggested question",
+        "addPrompt": "Add question",
+        "saveError": "The Expert Team could not be created. Check the form and try again.",
+        "uploadKindLabel": "Category",
+        "uploadGroupTab": "Expert Team",
+        "uploadAgentTab": "Expert",
+        "uploadHint": "Supports .zip, .tar and .tar.gz files; once extracted, the folder must include manifest.json, an agents directory and README.md, and the .json file must declare package_type.",
+        "uploadInvalidType": "Only .zip, .tar and .tar.gz Expert Team packages are supported",
+        "errors": {
+          "nameRequired": "Enter an Expert Team name",
+          "descriptionRequired": "Enter an Expert Team description",
+          "personaRequired": "Enter an Expert Team introduction",
+          "leaderRequired": "Choose a leader Expert"
+        }
+      },
+      "picker": { "leaderTitle": "Choose a leader", "memberTitle": "Choose members", "empty": "No matching Experts", "selectedCount": "{{count}} selected" }
     }
   },
   "fileViewer": {
@@ -3121,14 +3233,19 @@
       "rename": "Rename",
       "renamePlaceholder": "Enter a new name",
       "deleteProject": "Delete project",
-      "deleteProjectDescription": "Remove “<name>{{projectName}}</name>”? Finish any running conversations first. Archiving hides the project and its conversations and disables cron jobs. Re-selecting the project directory restores it.",
+      "deleteProjectDescription": "Permanently delete “<name>{{projectName}}</name>” and all its conversations and cron jobs, including active conversations. Running tasks will stop. The working directory will be kept. This cannot be undone.",
+      "archiveSessions": "Archive all conversations",
+      "deleteArchivedSessions": "Delete archived conversations",
+      "archiveSessionsDescription": "Archive all ordinary conversations in “<name>{{projectName}}</name>”. Running conversations will remain active and report a failure. Cron jobs stay unchanged.",
+      "deleteArchivedSessionsDescription": "Permanently delete all archived conversations in “<name>{{projectName}}</name>”. This cannot be undone.",
+      "batchPartialFailure": "{{succeeded}} succeeded, {{failed}} failed. Failed items can be retried.",
       "defaultProjectName": "Default Project",
       "absolutePathError": "Enter an absolute path, for example /Users/name/work/project",
       "errors": {
         "pathExists": "This project path already exists. Choose another directory or start a new conversation from the existing project.",
         "nameExists": "This project name already exists. Please choose another name.",
         "pathMissing": "Project directory does not exist. Choose an existing directory.",
-        "projectArchived": "This directory belongs to an archived project. Restoring it failed, please retry."
+        "projectUnavailable": "Project unavailable. Refresh and retry."
       },
       "cancel": "Cancel",
       "confirm": "Confirm"
@@ -3334,7 +3451,7 @@
       "breadcrumbPlugin": "Plugin details",
       "breadcrumbMcp": "Connector details",
       "mcpDisconnectedBanner": "This plugin's connector isn't connected, so it can't be used normally",
-      "mcpDisconnectedBannerSelf": "This connector isn't connected, so it can't be used normally",
+      "mcpDisconnectedBannerSelf": "Not connected yet. Connect to start using it",
       "connectMcp": "Connect",
       "sections": {
         "basicInfo": "Basic info",
