@@ -11,6 +11,11 @@ preferred_language: zh
 # ToolCard 自己显式声明的 exposure 优先级更高。
 progressive_tool_enabled: true
 
+# Tool discovery backend: bm25 (default) or jev (System 1 tool-selection API).
+tool_discovery_backend: bm25
+tool_discovery_model: typesafe/jev-1.13
+tool_discovery_max_tools: 10
+
 # Web 首次模型配置引导；用户确认完成后会自动关闭，可通过侧栏问号再次打开
 setup_guide:
   enabled: true

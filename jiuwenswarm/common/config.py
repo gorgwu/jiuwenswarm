@@ -412,6 +412,45 @@ def get_progressive_tool_enabled(config: dict[str, Any] | None = None) -> bool:
     return bool(value)
 
 
+def get_tool_discovery_config(
+    config: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Resolve progressive tool-discovery settings."""
+    cfg = config if isinstance(config, dict) else {}
+    backend = str(
+        cfg.get("tool_discovery_backend")
+        or "bm25"
+    ).strip().lower()
+    if backend not in {"bm25", "jev"}:
+        backend = "bm25"
+
+    model_default = "typesafe/jev-1.13"
+    configured_model = cfg.get("tool_discovery_model")
+    model = str(configured_model or model_default).strip()
+    if not model:
+        model = model_default
+
+    try:
+        max_tools = int(
+            cfg.get("tool_discovery_max_tools")
+            or 10
+        )
+    except (TypeError, ValueError):
+        max_tools = 10
+    max_tools = min(10, max(1, max_tools))
+
+    return {
+        "tool_discovery_backend": backend,
+        "tool_discovery_api_key": cfg.get("tool_discovery_api_key") or None,
+        "tool_discovery_model": model,
+        "tool_discovery_max_tools": max_tools,
+        "tool_discovery_api_base": str(
+            cfg.get("tool_discovery_api_base")
+            or ""
+        ).strip() or None,
+    }
+
+
 def get_endpoint_profile_overrides(config: dict[str, Any] | None = None) -> dict[str, str]:
     """Return the user-configured ``api_base host -> endpoint_profile`` map.
 

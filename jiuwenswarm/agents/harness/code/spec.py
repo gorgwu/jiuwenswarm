@@ -39,6 +39,7 @@ from openjiuwen.harness.schema.deep_agent_spec import (
 
 from jiuwenswarm.common.config import (
     get_progressive_tool_enabled,
+    get_tool_discovery_config,
     get_skill_evolution_enabled,
     is_subagent_runtime_enabled,
 )
@@ -263,6 +264,7 @@ def convert_code_config_to_deep_agent_spec(
         language=language,
         project_dir=project_dir,
     )
+    discovery_config = get_tool_discovery_config(config_snapshot)
     spec = DeepAgentSpec(
         model=_model_spec(model),
         card=card,
@@ -307,7 +309,12 @@ def convert_code_config_to_deep_agent_spec(
         auto_create_workspace=False,
         completion_timeout=completion_timeout,
         progressive_tool=ProgressiveToolSpec(
-            enabled=get_progressive_tool_enabled(config_snapshot)
+            enabled=get_progressive_tool_enabled(config_snapshot),
+            tool_discovery_backend=discovery_config["tool_discovery_backend"],
+            tool_discovery_api_key=discovery_config["tool_discovery_api_key"],
+            tool_discovery_api_base=discovery_config["tool_discovery_api_base"],
+            tool_discovery_model=discovery_config["tool_discovery_model"],
+            tool_discovery_max_tools=discovery_config["tool_discovery_max_tools"],
         ),
     )
     return spec, context

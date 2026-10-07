@@ -80,6 +80,9 @@ def test_code_config_is_converted_to_spec_snapshot(tmp_path):
     adapter = _FakeCodeAdapter()
     config_base = {
         "progressive_tool_enabled": True,
+        "tool_discovery_backend": "jev",
+        "tool_discovery_model": "typesafe/jev-1.13",
+        "tool_discovery_max_tools": 10,
         "react": {
             "enable_task_loop": True,
             "max_iterations": 23,
@@ -134,6 +137,9 @@ def test_code_config_is_converted_to_spec_snapshot(tmp_path):
     assert spec.enable_task_loop is True
     assert spec.progressive_tool is not None
     assert spec.progressive_tool.enabled is True
+    assert spec.progressive_tool.tool_discovery_backend == "jev"
+    assert spec.progressive_tool.tool_discovery_model == "typesafe/jev-1.13"
+    assert spec.progressive_tool.tool_discovery_max_tools == 10
     assert spec.max_iterations == 23
     assert spec.completion_timeout is None
     assert spec.workspace.root_path == str(tmp_path)

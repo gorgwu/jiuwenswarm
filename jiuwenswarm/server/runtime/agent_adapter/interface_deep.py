@@ -541,6 +541,7 @@ from jiuwenswarm.common.config import (
     get_model_names,
     get_evolution_auto_save_enabled,
     get_progressive_tool_enabled,
+    get_tool_discovery_config,
     get_skill_evolution_enabled,
     get_sandbox_endpoint,
     get_sandbox_runtime,
@@ -618,6 +619,15 @@ apply_free_search_runtime_defaults()
 TodoModifyTool = CompatibleTodoModifyTool
 install_todo_modify_compat_patch()
 install_subagent_control_compat_patch()
+
+def _tool_discovery_kwargs(config: dict[str, Any]) -> dict[str, Any]:
+    """Pass tool-discovery options supported by the imported agent-core."""
+    values = get_tool_discovery_config(config)
+    core_fields = getattr(DeepAgentConfig, "__dataclass_fields__", None)
+    if core_fields is None:
+        return values
+    return {key: value for key, value in values.items() if key in core_fields}
+
 
 _react_config = get_config().get("react", {})
 
@@ -9598,6 +9608,7 @@ class JiuWenSwarmDeepAdapter:
             prompt_mode=None,
             rails=rails,
             progressive_tool_enabled=get_progressive_tool_enabled(config_base),
+            **_tool_discovery_kwargs(config_base),
             vision_model_config=self._vision_model_config,
             audio_model_config=self._audio_model_config,
             enable_read_image_multimodal=self._resolve_enable_read_image_multimodal(config),
@@ -10697,6 +10708,7 @@ class JiuWenSwarmDeepAdapter:
             # Keep explicitly direct tools (including the enabled installed-Skill
             # directory) visible; defer and index the remaining ordinary tools.
             progressive_tool_enabled=get_progressive_tool_enabled(config_base),
+            **_tool_discovery_kwargs(config_base),
             enable_task_loop=self._resolve_enable_task_loop(config, config_base),
             enable_subagent_runtime=self._resolve_enable_subagent_runtime(config_base),
             add_general_purpose_agent=False,
