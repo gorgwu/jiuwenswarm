@@ -7,6 +7,7 @@ def test_tool_discovery_defaults_to_bm25_and_jev_model() -> None:
         "tool_discovery_api_key": None,
         "tool_discovery_model": "typesafe/jev-1.13",
         "tool_discovery_max_tools": 10,
+        "tool_discovery_min_score": 0.01,
         "tool_discovery_api_base": None,
     }
 
@@ -24,6 +25,7 @@ def test_tool_discovery_accepts_hosted_model_settings() -> None:
         "tool_discovery_api_key": None,
         "tool_discovery_model": "custom/model",
         "tool_discovery_max_tools": 10,
+        "tool_discovery_min_score": 0.01,
         "tool_discovery_api_base": "https://provider.example/decisions",
     }
 
@@ -50,6 +52,7 @@ def test_tool_discovery_ignores_unsupported_legacy_keys() -> None:
         "tool_discovery_api_key": None,
         "tool_discovery_model": "typesafe/jev-1.13",
         "tool_discovery_max_tools": 10,
+        "tool_discovery_min_score": 0.01,
         "tool_discovery_api_base": None,
     }
 
@@ -66,5 +69,6 @@ def test_tool_discovery_invalid_values_fall_back_safely() -> None:
         "tool_discovery_api_key": None,
         "tool_discovery_model": "typesafe/jev-1.13",
         "tool_discovery_max_tools": 10,
+        "tool_discovery_min_score": 0.01,
         "tool_discovery_api_base": None,
     }

@@ -315,6 +315,7 @@ def convert_code_config_to_deep_agent_spec(
             tool_discovery_api_base=discovery_config["tool_discovery_api_base"],
             tool_discovery_model=discovery_config["tool_discovery_model"],
             tool_discovery_max_tools=discovery_config["tool_discovery_max_tools"],
+            tool_discovery_min_score=discovery_config["tool_discovery_min_score"],
         ),
     )
     return spec, context

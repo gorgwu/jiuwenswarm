@@ -2,6 +2,7 @@
 
 import json
 import logging
+import math
 import os
 import re
 import secrets
@@ -439,11 +440,20 @@ def get_tool_discovery_config(
         max_tools = 10
     max_tools = min(10, max(1, max_tools))
 
+    try:
+        min_score = float(cfg.get("tool_discovery_min_score", 0.01))
+    except (TypeError, ValueError):
+        min_score = 0.01
+    if not math.isfinite(min_score):
+        min_score = 0.01
+    min_score = min(1.0, max(0.0, min_score))
+
     return {
         "tool_discovery_backend": backend,
         "tool_discovery_api_key": cfg.get("tool_discovery_api_key") or None,
         "tool_discovery_model": model,
         "tool_discovery_max_tools": max_tools,
+        "tool_discovery_min_score": min_score,
         "tool_discovery_api_base": str(
             cfg.get("tool_discovery_api_base")
             or ""
