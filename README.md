@@ -199,6 +199,25 @@ Full notes for every version are on [GitHub Releases](https://github.com/openJiu
 
 For solutions to common issues, see: [FAQ](docs/en/FAQ.md).
 
+## Tool retrieval benchmark
+
+The `toolret-BM25` branch registers ToolRet's public tool catalog as deferred,
+metadata-only tools for retrieval benchmarking. These entries use a placeholder
+executor and do not call external services. The default category set is `all`;
+set `toolret_benchmark.categories` in `~/.jiuwenswarm/config/config.yaml` to
+`code`, `web`, `customized`, or a comma-separated subset to narrow it. Set
+`toolret_benchmark.enabled` to `false` to disable the catalog.
+
+This branch expects the sibling `agent-core` checkout at `../agent-core` and
+uses its local BM25 implementation. From the JiuwenSwarm repository root, run:
+
+```powershell
+uv sync --extra toolret-benchmark
+```
+
+The first run downloads the selected ToolRet catalog from Hugging Face and
+uses the local Hugging Face dataset cache on later starts.
+
 ## Contributing
 
 We welcome developers to contribute to JiuwenSwarm. You can contribute in the following ways:

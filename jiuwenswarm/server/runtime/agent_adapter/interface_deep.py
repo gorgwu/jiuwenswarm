@@ -10209,13 +10209,15 @@ class JiuWenSwarmDeepAdapter:
         """Get tool cards."""
         tool_cards = []
 
-        include_financial_tools = os.environ.get(
-            "JIUWENSWARM_FINANCIAL_TOOLS", "true"
-        ).strip().lower() not in {"0", "false", "no", "off"}
-        if include_financial_tools:
-            from adapters.jiuwenswarm_adapter import register_finance_tools
+        from jiuwenswarm.agents.harness.common.tools.toolret_benchmark import (
+            register_toolret_tools,
+        )
 
-            for tool in register_finance_tools():
+        toolret_config = self._config_base_cache or {}
+        toolret_settings = toolret_config.get("toolret_benchmark", {})
+        if isinstance(toolret_settings, dict) and toolret_settings.get("enabled", True):
+            categories = str(toolret_settings.get("categories", "all"))
+            for tool in register_toolret_tools(categories):
                 self._register_shared_tool(tool)
                 tool_cards.append(tool.card)
 
