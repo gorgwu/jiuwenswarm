@@ -11,11 +11,12 @@ preferred_language: zh
 # ToolCard 自己显式声明的 exposure 优先级更高。
 progressive_tool_enabled: true
 
-# ToolRet tool-retrieval benchmark catalog. These entries are metadata-only
-# deferred tools; their placeholder executor performs no external operation.
-toolret_benchmark:
+# MetaTool benchmark catalog. These entries are metadata-only deferred
+# tools; their placeholder executor performs no external operation. BM25 is
+# restricted to this catalog while the benchmark is enabled.
+metatool_benchmark:
   enabled: true
-  categories: all  # all, code, web, customized, or a comma-separated subset
+  data_dir: ../MetaTool/dataset
 
 # Web 首次模型配置引导；用户确认完成后会自动关闭，可通过侧栏问号再次打开
 setup_guide:

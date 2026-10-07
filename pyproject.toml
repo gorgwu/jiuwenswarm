@@ -69,7 +69,6 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-toolret-benchmark = ["datasets>=2.19,<4"]
 # HarmonyOS-compatible reduced dependencies;
 # excludes packages with C extensions or system deps unavailable on HarmonyOS.
 # Usage: pip install jiuwenswarm --no-deps, then install each dep in this group manually,

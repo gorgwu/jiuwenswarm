@@ -267,7 +267,7 @@ def load_agent_group_package(path: Path) -> dict[str, AgentTemplateSpec]:
     templates: dict[str, AgentTemplateSpec] = {}
     for agent_name in _agent_names(payload):
         template = _load_member_template(package_dir, agent_name)
-        if agent_name == "leader" and template.runtime is not None:
+        if agent_name == "leader" and getattr(template, "runtime", None) is not None:
             raise ValueError("AgentGroup leader does not support external runtime")
         prompt_sections = list(template.prompt_sections)
         if instruction:

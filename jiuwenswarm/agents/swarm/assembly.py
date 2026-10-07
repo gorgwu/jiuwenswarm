@@ -35,10 +35,16 @@ from openjiuwen.agent_teams.paths import (
     configure_global_skills_dir,
     team_home,
 )
-from openjiuwen.agent_teams.external import external_cli_agent_spec_from_template
+try:
+    from openjiuwen.agent_teams.external import (
+        external_cli_agent_spec_from_template,
+    )
+    from openjiuwen.agent_teams.schema.team import ExternalCliMemberSpec
+except ImportError:  # agent-core main predates AgentTemplate external runtimes
+    external_cli_agent_spec_from_template = None
+    ExternalCliMemberSpec = None
 from openjiuwen.agent_teams.schema.blueprint import TransportSpec
 from openjiuwen.agent_teams.schema.team import (
-    ExternalCliMemberSpec,
     TeamMemberSpec,
     TeamRole,
 )
@@ -240,7 +246,16 @@ def _apply_agent_group(spec: Any, agent_group_name: str) -> None:
         if agent_name == "leader":
             continue
         member_prompt = _template_team_prompt(template, teammate_base)
-        external_config = external_cli_agent_spec_from_template(template)
+        if external_cli_agent_spec_from_template is None:
+            if getattr(template, "runtime", None) is not None:
+                raise RuntimeError(
+                    "This AgentGroup uses an external runtime, but the installed "
+                    "agent-core version does not support AgentTemplate runtimes. "
+                    "Use an agent-core branch with external runtime support."
+                )
+            external_config = None
+        else:
+            external_config = external_cli_agent_spec_from_template(template)
         if external_config is None:
             spec.agents[agent_name] = _with_agent_template(
                 teammate_base.model_copy(deep=True),
@@ -258,6 +273,11 @@ def _apply_agent_group(spec: Any, agent_group_name: str) -> None:
                 role_type=TeamRole.TEAMMATE,
             )
         else:
+            if ExternalCliMemberSpec is None:
+                raise RuntimeError(
+                    "This AgentGroup uses an external runtime, but the installed "
+                    "agent-core version does not support external CLI members."
+                )
             spec.agents[agent_name] = teammate_base.model_copy(deep=True)
             member = ExternalCliMemberSpec(
                 member_name=agent_name,

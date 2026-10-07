@@ -9631,11 +9631,35 @@ class JiuWenSwarmDeepAdapter:
             prompt_mode=None,
             rails=rails,
             progressive_tool_enabled=get_progressive_tool_enabled(config_base),
+            tool_search_tool_ids=self._metatool_search_tool_ids(
+                config_base, normalized_tool_cards
+            ),
             vision_model_config=self._vision_model_config,
             audio_model_config=self._audio_model_config,
             enable_read_image_multimodal=self._resolve_enable_read_image_multimodal(config),
             completion_timeout=resolve_task_loop_completion_timeout(config),
         )
+
+    @staticmethod
+    def _metatool_search_tool_ids(
+        config_base: dict[str, Any] | None,
+        tool_cards: list[Any],
+    ) -> list[str] | None:
+        """Scope BM25 to the MetaTool catalog while the benchmark is enabled."""
+        settings = (config_base or {}).get("metatool_benchmark", {})
+        if not isinstance(settings, dict) or not settings.get("enabled", True):
+            return None
+        tool_ids = [
+            str(getattr(card, "id", ""))
+            for card in tool_cards
+            if str(getattr(card, "id", "")).startswith("metatool_")
+        ]
+        if len(tool_ids) != 199 or len(set(tool_ids)) != 199:
+            raise RuntimeError(
+                "MetaTool search isolation requires exactly 199 uniquely "
+                f"registered benchmark cards; found {len(tool_ids)}"
+            )
+        return tool_ids
 
     def _update_permission_rail(self, config_base: dict[str, Any] | None) -> None:
         """原地更新已有 PermissionRail 配置，或在首次启用时新建。"""
@@ -10209,15 +10233,42 @@ class JiuWenSwarmDeepAdapter:
         """Get tool cards."""
         tool_cards = []
 
-        from jiuwenswarm.agents.harness.common.tools.toolret_benchmark import (
-            register_toolret_tools,
+        from jiuwenswarm.agents.harness.common.tools.metatool import (
+            register_metatool_tools,
         )
 
-        toolret_config = self._config_base_cache or {}
-        toolret_settings = toolret_config.get("toolret_benchmark", {})
-        if isinstance(toolret_settings, dict) and toolret_settings.get("enabled", True):
-            categories = str(toolret_settings.get("categories", "all"))
-            for tool in register_toolret_tools(categories):
+        benchmark_settings = (self._config_base_cache or {}).get(
+            "metatool_benchmark", {}
+        )
+        if (
+            isinstance(benchmark_settings, dict)
+            and benchmark_settings.get("enabled", True)
+        ):
+            benchmark_tools = register_metatool_tools(
+                benchmark_settings.get("data_dir")
+            )
+            if len(benchmark_tools) != 199:
+                raise RuntimeError(
+                    "MetaTool is enabled, but its catalog does not contain "
+                    "all 199 expected tools."
+                )
+            logger.info(
+                "[MetaTool] Loaded all %d deferred tools; BM25 will be scoped "
+                "to these tool IDs",
+                len(benchmark_tools),
+            )
+            for tool in benchmark_tools:
+                existing_tool = Runner.resource_mgr.get_tool(tool.card.id)
+                if (
+                    existing_tool is not None
+                    and existing_tool.card.name != tool.card.name
+                ):
+                    raise RuntimeError(
+                        "MetaTool tool id collides with an existing registered tool: "
+                        f"id={tool.card.id!r}, "
+                        f"existing_name={existing_tool.card.name!r}, "
+                        f"benchmark_name={tool.card.name!r}"
+                    )
                 self._register_shared_tool(tool)
                 tool_cards.append(tool.card)
 
@@ -10447,6 +10498,31 @@ class JiuWenSwarmDeepAdapter:
                 logger.info("[JiuWenSwarmDeepAdapter] acp_chat tool registered")
         except Exception as exc:
             logger.warning("[JiuWenSwarmDeepAdapter] acp_chat registration failed: %s", exc)
+
+        benchmark_ids = {
+            str(card.id)
+            for card in tool_cards
+            if str(getattr(card, "id", "")).startswith("metatool_")
+        }
+        if benchmark_ids:
+            benchmark_names = {
+                str(card.name)
+                for card in tool_cards
+                if str(getattr(card, "id", "")).startswith("metatool_")
+            }
+            conflicting_names = sorted(
+                {
+                    str(card.name)
+                    for card in tool_cards
+                    if not str(getattr(card, "id", "")).startswith("metatool_")
+                    and str(getattr(card, "name", "")) in benchmark_names
+                }
+            )
+            if conflicting_names:
+                raise RuntimeError(
+                    "MetaTool tool names collide with JiuwenSwarm tools: "
+                    + ", ".join(conflicting_names)
+                )
 
         return tool_cards
 
@@ -10742,6 +10818,10 @@ class JiuWenSwarmDeepAdapter:
             # Keep explicitly direct tools (including the enabled installed-Skill
             # directory) visible; defer and index the remaining ordinary tools.
             progressive_tool_enabled=get_progressive_tool_enabled(config_base),
+            tool_search_tool_ids=self._metatool_search_tool_ids(
+                config_base,
+                [tool.card if hasattr(tool, "card") else tool for tool in tool_cards],
+            ),
             enable_task_loop=self._resolve_enable_task_loop(config, config_base),
             enable_subagent_runtime=self._resolve_enable_subagent_runtime(config_base),
             add_general_purpose_agent=False,

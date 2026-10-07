@@ -199,24 +199,20 @@ Full notes for every version are on [GitHub Releases](https://github.com/openJiu
 
 For solutions to common issues, see: [FAQ](docs/en/FAQ.md).
 
-## Tool retrieval benchmark
+## MetaTool retrieval benchmark
 
-The `toolret-BM25` branch registers ToolRet's public tool catalog as deferred,
-metadata-only tools for retrieval benchmarking. These entries use a placeholder
-executor and do not call external services. The default category set is `all`;
-set `toolret_benchmark.categories` in `~/.jiuwenswarm/config/config.yaml` to
-`code`, `web`, `customized`, or a comma-separated subset to narrow it. Set
-`toolret_benchmark.enabled` to `false` to disable the catalog.
+The `benchmark/MetaTool` branch registers MetaTool's 199 tool names and
+descriptions as deferred, metadata-only tools. The dataset does not provide
+parameter schemas, so the cards use empty parameter objects. Their placeholder
+executor does not call external services. While `metatool_benchmark.enabled`
+is true, BM25 is restricted to these 199 tool IDs; JiuwenSwarm's other deferred
+tools are excluded from the retrieval index.
 
-This branch expects the sibling `agent-core` checkout at `../agent-core` and
-uses its local BM25 implementation. From the JiuwenSwarm repository root, run:
-
-```powershell
-uv sync --extra toolret-benchmark
-```
-
-The first run downloads the selected ToolRet catalog from Hugging Face and
-uses the local Hugging Face dataset cache on later starts.
+The default data path is the sibling checkout `../MetaTool/dataset`. Override
+`metatool_benchmark.data_dir` in `~/.jiuwenswarm/config/config.yaml` if the
+benchmark repository is elsewhere. Set `metatool_benchmark.enabled` to `false`
+to disable the benchmark catalog and restore the normal all-deferred-tools BM25
+scope.
 
 ## Contributing
 
