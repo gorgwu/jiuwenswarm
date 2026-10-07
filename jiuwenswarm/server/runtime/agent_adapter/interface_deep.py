@@ -10176,6 +10176,16 @@ class JiuWenSwarmDeepAdapter:
         """Get tool cards."""
         tool_cards = []
 
+        include_financial_tools = os.environ.get(
+            "JIUWENSWARM_FINANCIAL_TOOLS", "true"
+        ).strip().lower() not in {"0", "false", "no", "off"}
+        if include_financial_tools:
+            from adapters.jiuwenswarm_adapter import register_finance_tools
+
+            for tool in register_finance_tools():
+                self._register_shared_tool(tool)
+                tool_cards.append(tool.card)
+
         for wtool in [read_pdf]:
             self._register_shared_tool(wtool)
             tool_cards.append(wtool.card)
