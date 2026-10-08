@@ -11,12 +11,12 @@ preferred_language: zh
 # ToolCard 自己显式声明的 exposure 优先级更高。
 progressive_tool_enabled: true
 
-# MetaTool benchmark catalog. These entries are metadata-only deferred
-# tools; their placeholder executor performs no external operation. BM25 is
-# restricted to this catalog while the benchmark is enabled.
-metatool_benchmark:
-  enabled: true
-  data_dir: ../MetaTool/dataset
+# Optional tau2 tool demo for the JiuWenSwarm runtime/UI. This is independent
+# of tau2's benchmark runner; when enabled, it replaces application tool cards
+# with one tau2 domain's deferred tools for interactive exploration.
+tau2_demo:
+  enabled: false
+  domain: all  # all, airline, retail, telecom, or mock
 
 # Web 首次模型配置引导；用户确认完成后会自动关闭，可通过侧栏问号再次打开
 setup_guide:

@@ -199,21 +199,6 @@ Full notes for every version are on [GitHub Releases](https://github.com/openJiu
 
 For solutions to common issues, see: [FAQ](docs/en/FAQ.md).
 
-## MetaTool retrieval benchmark
-
-The `benchmark/MetaTool` branch registers MetaTool's 199 tool names and
-descriptions as deferred, metadata-only tools. The dataset does not provide
-parameter schemas, so the cards use empty parameter objects. Their placeholder
-executor does not call external services. While `metatool_benchmark.enabled`
-is true, BM25 is restricted to these 199 tool IDs; JiuwenSwarm's other deferred
-tools are excluded from the retrieval index.
-
-The default data path is the sibling checkout `../MetaTool/dataset`. Override
-`metatool_benchmark.data_dir` in `~/.jiuwenswarm/config/config.yaml` if the
-benchmark repository is elsewhere. Set `metatool_benchmark.enabled` to `false`
-to disable the benchmark catalog and restore the normal all-deferred-tools BM25
-scope.
-
 ## Contributing
 
 We welcome developers to contribute to JiuwenSwarm. You can contribute in the following ways:

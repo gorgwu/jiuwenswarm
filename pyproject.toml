@@ -18,6 +18,7 @@ dependencies = [
     "lark-oapi>=1.5.3,<2",
     "loguru>=0.7.3,<0.8",
     "openjiuwen",
+    "tau2; python_version >= '3.12'",
     "pgvector>=0.4.2,<0.5",
     "portalocker>=3.2.0,<4",
     "prompt-toolkit>=3.0,<4.0",
@@ -197,6 +198,7 @@ default-groups = ['dev']
 [tool.uv.sources]
 workswarm-tui = { path = "./packages/jiuwenswarm-tui" }  # build-config: tui-source
 openjiuwen = { path = "../agent-core", editable = true }
+tau2 = { path = "../tau2-bench", editable = true }
 
 [dependency-groups]
 # Testing (keep in sync with optional-dependencies.test)

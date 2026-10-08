@@ -9580,23 +9580,51 @@ class JiuWenSwarmDeepAdapter:
         """与 create_deep_agent() 中 DeepAgentConfig 构造保持一致."""
         resolved_language = self._resolve_runtime_language()
         config_base = config_base or get_config()
+        tau2_demo_enabled = self._tau2_demo_enabled(config_base)
+        if tau2_demo_enabled and not any(
+            self._is_tau2_demo_tool_card(tool) for tool in (tool_cards or [])
+        ):
+            # Config reload can rebuild the agent after its session-owned tool
+            # list was cleared. Recreate the demo tools here as well as during
+            # initial construction so the deferred-search allowlist is valid.
+            settings = config_base.get("tau2_demo", {})
+            from jiuwenswarm.agents.harness.common.tools.tau2_demo_tools import (
+                register_tau2_demo_tools,
+            )
+
+            tau2_tools, self._tau2_demo_policy = register_tau2_demo_tools(
+                str(settings.get("domain", "airline")),
+                owner_id=self._tool_owner_id(),
+            )
+            for tool in tau2_tools:
+                self._register_agent_owned_tool(tool, self._tool_owner_id())
+            tool_cards = [tool.card for tool in tau2_tools]
+            self._tool_cards = tool_cards
+            logger.info(
+                "[tau2 demo] Restored %d deferred tools during agent reload",
+                len(tool_cards),
+            )
         workspace_obj = Workspace(root_path=self._workspace_dir or "./", language=resolved_language)
         normalized_tool_cards = [
             tool.card if hasattr(tool, "card") else tool for tool in (tool_cards or [])
         ]
-        configured_subagents = self._build_subagents_with_general_purpose(
-            model=model,
-            config=config,
-            config_base=config_base,
-            rails=rails,
-            tools=normalized_tool_cards,
-            workspace=workspace_obj,
-            sys_operation=self._sys_operation,
-            reload=True,
-            allow_general=(
-                self._session_instance_sub_mode == "plan"
-                or self._session_instance_mode.startswith("agent")
-            ),
+        configured_subagents = (
+            []
+            if tau2_demo_enabled
+            else self._build_subagents_with_general_purpose(
+                model=model,
+                config=config,
+                config_base=config_base,
+                rails=rails,
+                tools=normalized_tool_cards,
+                workspace=workspace_obj,
+                sys_operation=self._sys_operation,
+                reload=True,
+                allow_general=(
+                    self._session_instance_sub_mode == "plan"
+                    or self._session_instance_mode.startswith("agent")
+                ),
+            )
         )
         context_model_state = _ContextEngineModelState(
             full_config=config_base,
@@ -9612,13 +9640,27 @@ class JiuWenSwarmDeepAdapter:
             model=model,
             card=agent_card,
             tool_owner_id=self._tool_owner_id(),
-            system_prompt=build_agent_identity_prompt(
-                language=self._resolve_prompt_language(),
+            system_prompt=(
+                build_agent_identity_prompt(language=self._resolve_prompt_language())
+                + (
+                    "\n\nFollow this tau2 domain policy when handling the request:\n"
+                    f"<policy>\n{getattr(self, '_tau2_demo_policy', '')}\n</policy>"
+                    if tau2_demo_enabled
+                    else ""
+                )
             ),
             context_engine_config=context_engine_config,
             kv_cache_affinity_config=_deep_agent_kv_cache_affinity_config(config_base, model),
-            enable_task_loop=self._resolve_enable_task_loop(config, config_base),
-            enable_subagent_runtime=self._resolve_enable_subagent_runtime(config_base),
+            enable_task_loop=(
+                False
+                if tau2_demo_enabled
+                else self._resolve_enable_task_loop(config, config_base)
+            ),
+            enable_subagent_runtime=(
+                False
+                if tau2_demo_enabled
+                else self._resolve_enable_subagent_runtime(config_base)
+            ),
             max_iterations=parse_optional_int(config.get("max_iterations")),
             subagents=configured_subagents,
             add_general_purpose_agent=False,
@@ -9630,8 +9672,12 @@ class JiuWenSwarmDeepAdapter:
             language=resolved_language,
             prompt_mode=None,
             rails=rails,
-            progressive_tool_enabled=get_progressive_tool_enabled(config_base),
-            tool_search_tool_ids=self._metatool_search_tool_ids(
+            progressive_tool_enabled=(
+                True
+                if tau2_demo_enabled
+                else get_progressive_tool_enabled(config_base)
+            ),
+            tool_search_tool_ids=self._progressive_tool_search_ids(
                 config_base, normalized_tool_cards
             ),
             vision_model_config=self._vision_model_config,
@@ -9641,25 +9687,33 @@ class JiuWenSwarmDeepAdapter:
         )
 
     @staticmethod
-    def _metatool_search_tool_ids(
+    def _tau2_demo_enabled(config_base: dict[str, Any] | None) -> bool:
+        settings = (config_base or {}).get("tau2_demo", {})
+        return isinstance(settings, dict) and bool(settings.get("enabled", False))
+
+    @staticmethod
+    def _is_tau2_demo_tool_card(tool: Any) -> bool:
+        card = getattr(tool, "card", tool)
+        properties = getattr(card, "properties", {})
+        return isinstance(properties, dict) and properties.get("catalog") == "tau2_demo"
+
+    @classmethod
+    def _progressive_tool_search_ids(
+        cls,
         config_base: dict[str, Any] | None,
         tool_cards: list[Any],
     ) -> list[str] | None:
-        """Scope BM25 to the MetaTool catalog while the benchmark is enabled."""
-        settings = (config_base or {}).get("metatool_benchmark", {})
-        if not isinstance(settings, dict) or not settings.get("enabled", True):
-            return None
-        tool_ids = [
-            str(getattr(card, "id", ""))
-            for card in tool_cards
-            if str(getattr(card, "id", "")).startswith("metatool_")
-        ]
-        if len(tool_ids) != 199 or len(set(tool_ids)) != 199:
-            raise RuntimeError(
-                "MetaTool search isolation requires exactly 199 uniquely "
-                f"registered benchmark cards; found {len(tool_ids)}"
-            )
-        return tool_ids
+        """Limit progressive search to the active demo catalog, if configured."""
+        if cls._tau2_demo_enabled(config_base):
+            tool_ids = [
+                str(getattr(card, "id", ""))
+                for card in tool_cards
+                if cls._is_tau2_demo_tool_card(card)
+            ]
+            if not tool_ids:
+                raise RuntimeError("tau2_demo is enabled but no tau2 tools were registered")
+            return tool_ids
+        return None
 
     def _update_permission_rail(self, config_base: dict[str, Any] | None) -> None:
         """原地更新已有 PermissionRail 配置，或在首次启用时新建。"""
@@ -10233,44 +10287,29 @@ class JiuWenSwarmDeepAdapter:
         """Get tool cards."""
         tool_cards = []
 
-        from jiuwenswarm.agents.harness.common.tools.metatool import (
-            register_metatool_tools,
-        )
-
-        benchmark_settings = (self._config_base_cache or {}).get(
-            "metatool_benchmark", {}
-        )
+        tau2_demo_settings = (self._config_base_cache or {}).get("tau2_demo", {})
         if (
-            isinstance(benchmark_settings, dict)
-            and benchmark_settings.get("enabled", True)
+            isinstance(tau2_demo_settings, dict)
+            and tau2_demo_settings.get("enabled", False)
         ):
-            benchmark_tools = register_metatool_tools(
-                benchmark_settings.get("data_dir")
+            from jiuwenswarm.agents.harness.common.tools.tau2_demo_tools import (
+                register_tau2_demo_tools,
             )
-            if len(benchmark_tools) != 199:
-                raise RuntimeError(
-                    "MetaTool is enabled, but its catalog does not contain "
-                    "all 199 expected tools."
-                )
-            logger.info(
-                "[MetaTool] Loaded all %d deferred tools; BM25 will be scoped "
-                "to these tool IDs",
-                len(benchmark_tools),
+
+            tau2_tools, self._tau2_demo_policy = register_tau2_demo_tools(
+                str(tau2_demo_settings.get("domain", "airline")),
+                owner_id=agent_id,
             )
-            for tool in benchmark_tools:
-                existing_tool = Runner.resource_mgr.get_tool(tool.card.id)
-                if (
-                    existing_tool is not None
-                    and existing_tool.card.name != tool.card.name
-                ):
-                    raise RuntimeError(
-                        "MetaTool tool id collides with an existing registered tool: "
-                        f"id={tool.card.id!r}, "
-                        f"existing_name={existing_tool.card.name!r}, "
-                        f"benchmark_name={tool.card.name!r}"
-                    )
-                self._register_shared_tool(tool)
+            for tool in tau2_tools:
+                self._register_agent_owned_tool(tool, agent_id)
                 tool_cards.append(tool.card)
+            logger.info(
+                "[tau2 demo] Registered %d deferred tools for domain %s; "
+                "application tool registration is skipped",
+                len(tau2_tools),
+                tau2_demo_settings.get("domain", "airline"),
+            )
+            return tool_cards
 
         for wtool in [read_pdf]:
             self._register_shared_tool(wtool)
@@ -10498,31 +10537,6 @@ class JiuWenSwarmDeepAdapter:
                 logger.info("[JiuWenSwarmDeepAdapter] acp_chat tool registered")
         except Exception as exc:
             logger.warning("[JiuWenSwarmDeepAdapter] acp_chat registration failed: %s", exc)
-
-        benchmark_ids = {
-            str(card.id)
-            for card in tool_cards
-            if str(getattr(card, "id", "")).startswith("metatool_")
-        }
-        if benchmark_ids:
-            benchmark_names = {
-                str(card.name)
-                for card in tool_cards
-                if str(getattr(card, "id", "")).startswith("metatool_")
-            }
-            conflicting_names = sorted(
-                {
-                    str(card.name)
-                    for card in tool_cards
-                    if not str(getattr(card, "id", "")).startswith("metatool_")
-                    and str(getattr(card, "name", "")) in benchmark_names
-                }
-            )
-            if conflicting_names:
-                raise RuntimeError(
-                    "MetaTool tool names collide with JiuwenSwarm tools: "
-                    + ", ".join(conflicting_names)
-                )
 
         return tool_cards
 
@@ -10770,8 +10784,9 @@ class JiuWenSwarmDeepAdapter:
         # 权限护栏由 openjiuwen PermissionInterruptRail + ToolPermissionHost 接管；
         # 无需初始化 jiuwenswarm 内置 PermissionEngine（已弃用）。
 
-        sys_operation = self._create_sys_operation()
-        if sys_operation is None:
+        tau2_demo_enabled = self._tau2_demo_enabled(config_base)
+        sys_operation = None if tau2_demo_enabled else self._create_sys_operation()
+        if sys_operation is None and not tau2_demo_enabled:
             raise RuntimeError("sys_operation is not available, maybe task is not running")
 
         self._sys_operation = sys_operation
@@ -10791,39 +10806,61 @@ class JiuWenSwarmDeepAdapter:
             root_path=self._workspace_dir or "./",
             language=resolved_language,
         )
-        configured_subagents = self._build_subagents_with_general_purpose(
-            model=model,
-            config=config,
-            config_base=config_base,
-            rails=rails_list,
-            tools=tool_cards if tool_cards else [],
-            workspace=workspace_obj,
-            sys_operation=sys_operation,
-            reload=False,
-            allow_general=(
-                sub_mode == "plan"
-                or (isinstance(mode, str) and mode.startswith("agent"))
-            ),
+        configured_subagents = (
+            []
+            if tau2_demo_enabled
+            else self._build_subagents_with_general_purpose(
+                model=model,
+                config=config,
+                config_base=config_base,
+                rails=rails_list,
+                tools=tool_cards if tool_cards else [],
+                workspace=workspace_obj,
+                sys_operation=sys_operation,
+                reload=False,
+                allow_general=(
+                    sub_mode == "plan"
+                    or (isinstance(mode, str) and mode.startswith("agent"))
+                ),
+            )
         )
+        system_prompt = build_agent_identity_prompt(
+            language=self._resolve_prompt_language(),
+        )
+        if tau2_demo_enabled:
+            system_prompt += (
+                "\n\nFollow this tau2 domain policy when handling the request:\n"
+                f"<policy>\n{getattr(self, '_tau2_demo_policy', '')}\n</policy>"
+            )
         common_kwargs = dict(
             model=model,
             card=agent_card,
             tool_owner_id=self._tool_owner_id(),
-            system_prompt=build_agent_identity_prompt(
-                language=self._resolve_prompt_language(),
-            ),
+            system_prompt=system_prompt,
             tools=tool_cards if tool_cards else [],
             subagents=configured_subagents,
             rails=rails_list if rails_list else [],
             # Keep explicitly direct tools (including the enabled installed-Skill
             # directory) visible; defer and index the remaining ordinary tools.
-            progressive_tool_enabled=get_progressive_tool_enabled(config_base),
-            tool_search_tool_ids=self._metatool_search_tool_ids(
+            progressive_tool_enabled=(
+                True
+                if tau2_demo_enabled
+                else get_progressive_tool_enabled(config_base)
+            ),
+            tool_search_tool_ids=self._progressive_tool_search_ids(
                 config_base,
                 [tool.card if hasattr(tool, "card") else tool for tool in tool_cards],
             ),
-            enable_task_loop=self._resolve_enable_task_loop(config, config_base),
-            enable_subagent_runtime=self._resolve_enable_subagent_runtime(config_base),
+            enable_task_loop=(
+                False
+                if tau2_demo_enabled
+                else self._resolve_enable_task_loop(config, config_base)
+            ),
+            enable_subagent_runtime=(
+                False
+                if tau2_demo_enabled
+                else self._resolve_enable_subagent_runtime(config_base)
+            ),
             add_general_purpose_agent=False,
             max_iterations=parse_optional_int(config.get("max_iterations")),
             workspace=workspace_obj,
