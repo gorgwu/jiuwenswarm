@@ -441,11 +441,11 @@ def get_tool_discovery_config(
     max_tools = min(10, max(1, max_tools))
 
     try:
-        min_score = float(cfg.get("tool_discovery_min_score", 0.01))
+        min_score = float(cfg.get("tool_discovery_min_score", 0.0))
     except (TypeError, ValueError):
-        min_score = 0.01
+        min_score = 0.0
     if not math.isfinite(min_score):
-        min_score = 0.01
+        min_score = 0.0
     min_score = min(1.0, max(0.0, min_score))
 
     return {
