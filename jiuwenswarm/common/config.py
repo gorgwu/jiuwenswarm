@@ -422,7 +422,7 @@ def get_tool_discovery_config(
         cfg.get("tool_discovery_backend")
         or "bm25"
     ).strip().lower()
-    if backend not in {"bm25", "jev"}:
+    if backend not in {"bm25", "jev", "local"}:
         backend = "bm25"
 
     model_default = "typesafe/jev-1.13"
@@ -450,12 +450,17 @@ def get_tool_discovery_config(
 
     return {
         "tool_discovery_backend": backend,
-        "tool_discovery_api_key": cfg.get("tool_discovery_api_key") or None,
+        "tool_discovery_api_key": (
+            cfg.get("tool_discovery_api_key")
+            or os.getenv("TOOL_DISCOVERY_API_KEY")
+            or None
+        ),
         "tool_discovery_model": model,
         "tool_discovery_max_tools": max_tools,
         "tool_discovery_min_score": min_score,
         "tool_discovery_api_base": str(
             cfg.get("tool_discovery_api_base")
+            or os.getenv("TOOL_DISCOVERY_API_BASE")
             or ""
         ).strip() or None,
     }

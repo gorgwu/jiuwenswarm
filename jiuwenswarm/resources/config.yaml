@@ -11,9 +11,15 @@ preferred_language: zh
 # ToolCard 自己显式声明的 exposure 优先级更高。
 progressive_tool_enabled: true
 
-# Tool discovery backend: bm25 (default) or System 1 (selected with backend `jev`).
+# Tool discovery backend: bm25 (default), jev (hosted System 1), or local
+# (a self-hosted System 1-compatible endpoint such as Kev or Valen).
 tool_discovery_backend: bm25
 tool_discovery_model: typesafe/jev-1.13
+# For backend `local`, set these to the local adapter's endpoint and API key.
+# They may instead be provided through TOOL_DISCOVERY_API_BASE and
+# TOOL_DISCOVERY_API_KEY in config/.env. Both backends use the same contract.
+# tool_discovery_api_base: http://127.0.0.1:8009/v1/systemone
+# tool_discovery_api_key: your-local-endpoint-key
 tool_discovery_max_tools: 10
 tool_discovery_min_score: 0.00
 
